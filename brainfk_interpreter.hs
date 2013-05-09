@@ -1,3 +1,4 @@
+module Main where
 import Data.Array
 import Data.Char (chr)
 import qualified Data.Map as M
@@ -16,27 +17,26 @@ data World = World { wpc     :: Int
 initWorld :: [Instruction] -> World
 initWorld cmds = 
   World { pointer = 0
-        , memory  = memAry
+        , memory  = memMap
         , program = progAry
         , wpc     = 0
         , output  = [] }
  where 
    progAry = toInstructionArray cmds
-   memAry = M.fromList $ zip [0.. maxMem -1] (cycle [0])
+   memMap = M.fromList $ zip [0.. maxMem -1] (cycle [0])
 
-data Mode = ShowProg | RunProg deriving (Eq)
 maxMem ::  Int
 maxMem = 30000
+
+data Mode = ShowProg | RunProg deriving (Eq)
+
 main ::  IO ()
 main = do
   args <- getArgs
   let mode = case args of
-              [modeChar] -> case modeChar of
-                              "s"   -> ShowProg
-                              "r"   -> RunProg
-                              other -> error $ "unrecognised switch " ++ show other
-              _other     -> error "usage: prog (s|r)"
-
+              ["--show"] -> ShowProg
+              []         -> RunProg
+              _other     -> error "usage: prog [--show]"
   _counts <- tests
   let f = case mode of
             ShowProg -> parseAndShow
