@@ -1,3 +1,6 @@
 tags
 brainfk_interpreter
 report.html
+*.aux
+*.hp
+*.ps
