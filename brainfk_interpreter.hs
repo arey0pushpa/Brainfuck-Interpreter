@@ -1,15 +1,17 @@
-import Test.HUnit
--- import Debug.Trace
 import Data.Array
-import System.Environment (getArgs)
 import Data.Char (chr)
+import qualified Data.Map as M
+import System.Environment (getArgs)
+import Test.HUnit
+
 type Byte = Int
+
 data World = World { wpc     :: Int
                    , pointer :: Int
-                   , program :: ( Array Int Instruction)
-                   , memory  :: (Array Int Byte)
+                   , program :: (Array Int Instruction)
+                   , memory  :: (M.Map Int Byte)
                    , output  :: [Byte]
-                   }
+                   } deriving (Show)
 
 initWorld :: [Instruction] -> World
 initWorld cmds = 
@@ -20,11 +22,11 @@ initWorld cmds =
         , output  = [] }
  where 
    progAry = toInstructionArray cmds
-   memAry = array (0, maxMem - 1) $ zip [0.. maxMem -1] (cycle [0])
+   memAry = M.fromList $ zip [0.. maxMem -1] (cycle [0])
 
 data Mode = ShowProg | RunProg deriving (Eq)
 maxMem ::  Int
-maxMem = 1000 -- 30000 -- 30000
+maxMem = 30000
 main ::  IO ()
 main = do
   args <- getArgs
@@ -100,13 +102,17 @@ applyAndAdvance instr w = pcChange $ apply instr w
 
 incPC ::  World -> World
 incPC w = w { wpc = wpc w + 1 }
+modPointer :: (Int -> Int) -> World -> World
+modPointer op w = newVal `seq` w { pointer = newVal }
+  where newVal = op (pointer w)
 
 apply ::  Instruction -> World -> World
-apply IncP w = w { pointer = pointer w + 1 } 
-apply DecP w = w { pointer = pointer w - 1 } 
+apply IncP w = modPointer (+1) w
+apply DecP w = modPointer (subtract 1) w
 apply IncB w = modByteAtPointer (+1) w
 apply DecB w = modByteAtPointer (+(-1)) w
-apply OutB w = w { output = byteAtPointer w : output w }
+apply OutB w = newVal `seq` w { output = newVal }
+  where newVal = byteAtPointer w : output w 
 apply InpB _w = error "Not implemented Input Byte"
 apply JmpF w = if byteAtPointer w == 0 then jumpForward w else incPC w
 apply JmpB w = if byteAtPointer w /= 0 then jumpBackward w else incPC w
@@ -133,10 +139,11 @@ jump progc arr dir = jf' progc 0
     (less, more) = lessAndMoreFor dir
     inc = pcIncFor dir
     jf' :: Int -> Int -> Int
-    jf' pc depth | arr ! pc' == less = (if depth == 0 then pc'+1 else jf' pc' (depth-1))
-                 | arr ! pc' == more = jf' pc' (depth + 1)
-                 | otherwise         = jf' pc' depth
+    jf' pc depth | bt == less   = (if depth == 0 then pc'+1 else jf' pc' (depth-1))
+                 | bt == more   = jf' pc' (depth + 1)
+                 | otherwise    = jf' pc' depth
       where
+        bt = arr ! pc' 
         pc' = pc + inc
     lessAndMoreFor Forward = (JmpB, JmpF)
     lessAndMoreFor Back    = (JmpF, JmpB)
@@ -145,23 +152,32 @@ jump progc arr dir = jf' progc 0
 
 
 byteAtPointer ::  World -> Byte
-byteAtPointer w = memory w ! pointer w
+byteAtPointer w = memory w M.! pointer w
 
 modByteAtPointer :: (Byte -> Byte) -> World ->  World
-modByteAtPointer op w = newVal `seq` w { memory = memory w // [(pointer w, newVal)] }
+modByteAtPointer op w = w { memory = newMem }
   where
-    newVal = cap $ op (memory w ! pointer w)
+    newMem = M.adjust (cap . op) (pointer w) (memory w)
+
 
 cap :: Byte -> Byte
-cap v | v < -128 = 127 - (-128 - (v+1))
-      | v > 127  = -128 - (127 - (v-1))
+cap v | v < -128  = v + 256
+      | v > 127   = v - 256
       | otherwise = v
 -- [-128, +127]
 
 -- TODO: add case when there is no program to run or at least when the program is one instruction long.
 --
 tests ::  IO Counts
-tests = runTestTT $ TestList [ jfTests]
+tests = runTestTT $ TestList [ jfTests, capTests]
+capTests :: Test
+capTests = TestList [ 127  ~=? cap (-129)
+                    , 126  ~=? cap (-130)
+                    , -128 ~=? cap (-128)
+                    , 127  ~=? cap 127
+                    , -128 ~=? cap 128
+                    , -127 ~=? cap 129
+                    ]
 jfTests ::  Test
 jfTests = TestList [ "jfsimple"           ~:  9 ~=? jf 1 simpleInstrs
                    , "jfnested all"       ~: 12 ~=? jf 1 nestedInstrs 
@@ -174,7 +190,7 @@ jfTests = TestList [ "jfsimple"           ~:  9 ~=? jf 1 simpleInstrs
                    , "jbnested two" ~: 4 ~=? jb 9 nestedInstrs
                    ]
   where 
-    simpleInstrs  = parseToArray "+[>>--++]-"
-    nestedInstrs  = parseToArray "+[>[>[-+]]-]+"
-    tinyInstrs  = parseToArray "[]"
+    simpleInstrs = parseToArray "+[>>--++]-"
+    nestedInstrs = parseToArray "+[>[>[-+]]-]+"
+    tinyInstrs   = parseToArray "[]"
 
