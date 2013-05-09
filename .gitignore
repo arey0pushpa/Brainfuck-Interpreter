@@ -4,3 +4,5 @@ report.html
 *.aux
 *.hp
 *.ps
+*.swp
+
