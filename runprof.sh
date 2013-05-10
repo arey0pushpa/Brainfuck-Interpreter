@@ -31,7 +31,7 @@ for flag in hc hr hd hy; do  #removed hb, hm (biography, module)
   < $input_file ./Main +RTS -$flag -p
 
   set +e
-  hp2ps -c -e8in Main.hp #only not used in p
+  hp2ps -c -g -e8in Main.hp #only not used in p
   mv Main.ps $ps_outname
   mv Main.prof $prof_outname  #not produced for some heap profilings
   set -e
