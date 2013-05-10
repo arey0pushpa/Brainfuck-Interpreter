@@ -2,32 +2,44 @@
 module Main where
 import Data.Array
 import Data.Char (chr)
-import qualified Data.Map as M
 import System.Environment (getArgs)
 import Test.HUnit
 
 type Byte = Int
+--------------------------------------------------------------------------------
+-- zipper
+--------------------------------------------------------------------------------
+
+type Zipper a = ([a], a, [a])
+zFwd,zBack :: Zipper a -> Zipper a
+zFwd (xs,x,y:ys) = (x:xs, y, ys) 
+zFwd _           = error "zFwd: zipper ran out of forward list"
+zBack (x:xs,y,ys) = (xs,x, y:ys) 
+zBack _           = error "zBack: zipper ran out of backward list"
+zInc,zDec :: (Enum a) => Zipper a -> Zipper a
+zInc (xs, a, ys) = (xs, succ a, ys)
+zDec (xs, a, ys) = (xs, pred a, ys)
+zGet ::  (t, t1, t2) -> t1
+zGet (_, a, _) = a
+--------------------------------------------------------------------------------
 
 data World = World { wpc     :: Int
                    , pointer :: Int
                    , program :: Array Int Instruction
-                   , memory  :: M.Map Int Byte
+                   , memory  :: Zipper Byte
                    , output  :: [Byte]
                    } deriving (Show)
 
 initWorld :: [Instruction] -> World
 initWorld cmds = 
   World { pointer = 0
-        , memory  = memMap
+        , memory  = mem
         , program = progAry
         , wpc     = 0
         , output  = [] }
  where 
    progAry = toInstructionArray cmds
-   memMap = M.fromList $ zip [0.. maxMem -1] (cycle [0])
-
-maxMem ::  Int
-maxMem = 30000
+   mem = (repeat 0, 0, repeat 0) -- infinite in both directions
 
 data Mode = ShowProg | RunProg deriving (Eq)
 
@@ -113,11 +125,14 @@ applyAndAdvance instr w = pcChange $ apply instr w
     handlesPC JmpB = True
     handlesPC _ = False
 
+modMem :: (Zipper Byte -> Zipper Byte) -> World -> World
+modMem f w = w { memory = f $ memory w }
+
 apply ::  Instruction -> World -> World
-apply IncP w = modPointer (+1) w
-apply DecP w = modPointer (subtract 1) w
-apply IncB w = modByteAtPointer (+1) w
-apply DecB w = modByteAtPointer (+(-1)) w
+apply IncP w = modMem zFwd w
+apply DecP w = modMem zBack w
+apply IncB w = modMem zInc w
+apply DecB w = modMem zDec w
 apply OutB w = w { output = newVal }
   where newVal = byteAtPointer w : output w 
 -- TODO: implement InputByte instruction
@@ -162,26 +177,18 @@ modPC ::  (Int -> Array Int Instruction -> Int) -> World -> World
 modPC f w = w { wpc = pc' }
   where pc' = f (wpc w) (program w)
 
-modPointer :: (Int -> Int) -> World -> World
-modPointer op w = w { pointer = newVal }
-  where newVal = op (pointer w)
-
 byteAtPointer ::  World -> Byte
-byteAtPointer w = memory w M.! pointer w
+byteAtPointer w = zGet $ memory w 
 
-modByteAtPointer :: (Byte -> Byte) -> World ->  World
-modByteAtPointer op w = w { memory = newMem }
-  where
-    newMem = M.adjust (cap . op) (pointer w) (memory w)
-
-cap :: Byte -> Byte
-cap v | v < -128  = v + 256
+-- TODO reintroduce rollover
+rollover :: Byte -> Byte
+rollover v | v < -128  = v + 256
       | v > 127   = v - 256
       | otherwise = v
 -- [-128, +127]
 
 tests ::  IO Counts
-tests = runTestTT $ TestList [ jfTests, capTests, runnerTests]
+tests = runTestTT $ TestList [ jfTests, rolloverTests, runnerTests]
 runnerTests :: Test
 runnerTests = TestList [ "no inp, no output" ~: []  ~=? (run $ parse "") 
                        , "single instr"      ~: [0] ~=? (run $ parse ".")
@@ -189,14 +196,14 @@ runnerTests = TestList [ "no inp, no output" ~: []  ~=? (run $ parse "")
                       "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.")
                        ]
 
-capTests :: Test
-capTests = TestList [ 127  ~=? cap (-129)
-                    , 126  ~=? cap (-130)
-                    , -128 ~=? cap (-128)
-                    , 127  ~=? cap 127
-                    , -128 ~=? cap 128
-                    , -127 ~=? cap 129
-                    ]
+rolloverTests :: Test
+rolloverTests = TestList  [ 127  ~=? rollover (-129)
+                          , 126  ~=? rollover (-130)
+                          , -128 ~=? rollover (-128)
+                          , 127  ~=? rollover 127
+                          , -128 ~=? rollover 128
+                          , -127 ~=? rollover 129
+                          ]
 jfTests ::  Test
 jfTests = TestList [ "jfsimple"           ~:  9 ~=? jf 1 simpleInstrs
                    , "jfnested all"       ~: 12 ~=? jf 1 nestedInstrs 
