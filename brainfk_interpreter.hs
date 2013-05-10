@@ -193,14 +193,14 @@ runnerTests = TestList [ "no inp, no output" ~: []  ~=? (run $ parse "")
                        ]
 
 rolloverTests :: Test
-rolloverTests = TestList  [ 127  ~=?  (subtract 1)  (-128) 
-                          , 126  ~=?  (subtract 2)  (-128) 
-                          , -128 ~=?  (subtract 0)  (-128) 
-                          , -128 ~=?  (subtract 1)  (-127) 
-                          , 127  ~=?  (+1)          126    
-                          , 127  ~=?  (+0)          127    
-                          , -128 ~=?  (+1)          127    
-                          , -127 ~=?  (+2)          127    
+rolloverTests = TestList  [ 127  ~=?  (subtract 1)  (-128::Int8) 
+                          , 126  ~=?  (subtract 2)  (-128::Int8) 
+                          , -128 ~=?  (subtract 0)  (-128::Int8) 
+                          , -128 ~=?  (subtract 1)  (-127::Int8) 
+                          , 127  ~=?  (+1)          (126::Int8)   
+                          , 127  ~=?  (+0)          (127::Int8)   
+                          , -128 ~=?  (+1)          (127::Int8)   
+                          , -127 ~=?  (+2)          (127::Int8)   
                           ]
 jfTests ::  Test
 jfTests = TestList [ "jfsimple"           ~:  9 ~=? jf 1 simpleInstrs
