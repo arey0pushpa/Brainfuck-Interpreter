@@ -6,7 +6,7 @@ Currently doesn't do input.
 Notes:
 
 On rollover, and memory cell size:
-Some programs have been written to rely on rollover.  For example, the 99bottles.bf used in testing this interpreter requires that rollover happen when decrementing memory values.
+Some programs have been written to rely on rollover.  For example, the 99bottles.bf used in testing this interpreter requires that rollover happen when decrementing memory values.  Initially, I had the functions simulate rollover manually.  I've since switched to a data type (Data.Int.Int8) which performs rollover itself.
 
 Learning Notes:
 

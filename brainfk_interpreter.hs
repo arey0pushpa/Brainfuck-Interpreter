@@ -190,17 +190,15 @@ runnerTests = TestList [ "no inp, no output" ~: []  ~=? (run $ parse "")
                       "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.")
                        ]
 
--- nothing to do to rollover now, as Int8 will rollover automatically (though not on pred or succ - that will error)
-rollover :: Int -> Int8
-rollover x = fromIntegral x
-
 rolloverTests :: Test
-rolloverTests = TestList  [ 127  ~=? rollover (-129)
-                          , 126  ~=? rollover (-130)
-                          , -128 ~=? rollover (-128)
-                          , 127  ~=? rollover 127
-                          , -128 ~=? rollover 128
-                          , -127 ~=? rollover 129
+rolloverTests = TestList  [ 127  ~=?  (subtract 1)  (-128) 
+                          , 126  ~=?  (subtract 2)  (-128) 
+                          , -128 ~=?  (subtract 0)  (-128) 
+                          , -128 ~=?  (subtract 1)  (-127) 
+                          , 127  ~=?  (+1)          126    
+                          , 127  ~=?  (+0)          127    
+                          , -128 ~=?  (+1)          127    
+                          , -127 ~=?  (+2)          127    
                           ]
 jfTests ::  Test
 jfTests = TestList [ "jfsimple"           ~:  9 ~=? jf 1 simpleInstrs
