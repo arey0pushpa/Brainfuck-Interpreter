@@ -182,9 +182,9 @@ byteAtPointer w = zGet $ memory w
 
 -- TODO reintroduce rollover
 rollover :: Byte -> Byte
-rollover v | v < -128  = v + 256
-      | v > 127   = v - 256
-      | otherwise = v
+rollover v  | v < -128  = v + 256
+            | v > 127   = v - 256
+            | otherwise = v
 -- [-128, +127]
 
 tests ::  IO Counts
