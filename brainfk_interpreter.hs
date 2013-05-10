@@ -2,10 +2,11 @@
 module Main where
 import Data.Array
 import Data.Char (chr)
+import Data.Int (Int8)
 import System.Environment (getArgs)
 import Test.HUnit
 
-type Byte = Int
+type Byte = Int8
 --------------------------------------------------------------------------------
 -- zipper
 --------------------------------------------------------------------------------
@@ -17,8 +18,8 @@ zFwd _           = error "zFwd: zipper ran out of forward list"
 zBack (x:xs,y,ys) = (xs,x, y:ys) 
 zBack _           = error "zBack: zipper ran out of backward list"
 zInc,zDec :: Zipper Byte -> Zipper Byte
-zInc (xs, a, ys) = (xs, rollover $ succ a, ys)
-zDec (xs, a, ys) = (xs, rollover $ pred a, ys)
+zInc (xs, a, ys) = (xs, a + 1, ys)
+zDec (xs, a, ys) = (xs, a - 1, ys)
 zGet ::  (t, t1, t2) -> t1
 zGet (_, a, _) = a
 --------------------------------------------------------------------------------
@@ -96,7 +97,7 @@ legalInstructionChar :: Char -> Bool
 legalInstructionChar = flip elem "><+-.,[]"
 
 display :: [Byte] -> String
-display = map chr . reverse
+display = map (chr . fromIntegral) . reverse
 
 run :: [Instruction] -> [Byte]
 run cmds = let w  = initWorld cmds
@@ -180,13 +181,6 @@ modPC f w = w { wpc = pc' }
 byteAtPointer ::  World -> Byte
 byteAtPointer w = zGet $ memory w 
 
--- TODO reintroduce rollover
-rollover :: Byte -> Byte
-rollover v  | v < -128  = v + 256
-            | v > 127   = v - 256
-            | otherwise = v
--- [-128, +127]
-
 tests ::  IO Counts
 tests = runTestTT $ TestList [ jfTests, rolloverTests, runnerTests]
 runnerTests :: Test
@@ -195,6 +189,10 @@ runnerTests = TestList [ "no inp, no output" ~: []  ~=? (run $ parse "")
                        , "single instr"      ~: "Hello World!\n" ~=? (display $ run $ parse 
                       "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.")
                        ]
+
+-- nothing to do to rollover now, as Int8 will rollover automatically (though not on pred or succ - that will error)
+rollover :: Int -> Int8
+rollover x = fromIntegral x
 
 rolloverTests :: Test
 rolloverTests = TestList  [ 127  ~=? rollover (-129)
