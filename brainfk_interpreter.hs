@@ -180,13 +180,13 @@ cap v | v < -128  = v + 256
       | otherwise = v
 -- [-128, +127]
 
--- TODO: add case when there is no program to run or at least when the program is one instruction long.
---
 tests ::  IO Counts
 tests = runTestTT $ TestList [ jfTests, capTests, runnerTests]
 runnerTests :: Test
 runnerTests = TestList [ "no inp, no output" ~: []  ~=? (run $ parse "") 
                        , "single instr"      ~: [0] ~=? (run $ parse ".")
+                       , "single instr"      ~: "Hello World!\n" ~=? (display $ run $ parse 
+                      "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.")
                        ]
 
 capTests :: Test
