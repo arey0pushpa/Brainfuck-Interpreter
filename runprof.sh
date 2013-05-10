@@ -38,4 +38,4 @@ for flag in hc hr hd hy; do  #removed hb, hm (biography, module)
 done
 
 echo "All done.  See results in $outdir"
-
+open $outdir
