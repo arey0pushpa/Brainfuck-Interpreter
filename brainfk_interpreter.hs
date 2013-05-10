@@ -20,6 +20,8 @@ zBack _           = error "zBack: zipper ran out of backward list"
 zInc,zDec :: Zipper Byte -> Zipper Byte
 zInc (xs, a, ys) = (xs, a + 1, ys)
 zDec (xs, a, ys) = (xs, a - 1, ys)
+zPut :: a -> Zipper a -> Zipper a
+zPut v (xs, _, ys) = (xs, v, ys) 
 zGet ::  (t, t1, t2) -> t1
 zGet (_, a, _) = a
 --------------------------------------------------------------------------------
