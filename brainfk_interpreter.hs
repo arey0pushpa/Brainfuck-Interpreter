@@ -16,9 +16,9 @@ zFwd (xs,x,y:ys) = (x:xs, y, ys)
 zFwd _           = error "zFwd: zipper ran out of forward list"
 zBack (x:xs,y,ys) = (xs,x, y:ys) 
 zBack _           = error "zBack: zipper ran out of backward list"
-zInc,zDec :: (Enum a) => Zipper a -> Zipper a
-zInc (xs, a, ys) = (xs, succ a, ys)
-zDec (xs, a, ys) = (xs, pred a, ys)
+zInc,zDec :: Zipper Byte -> Zipper Byte
+zInc (xs, a, ys) = (xs, rollover $ succ a, ys)
+zDec (xs, a, ys) = (xs, rollover $ pred a, ys)
 zGet ::  (t, t1, t2) -> t1
 zGet (_, a, _) = a
 --------------------------------------------------------------------------------
