@@ -103,7 +103,7 @@ applyAndAdvance instr w = pcChange $ apply instr w
 incPC ::  World -> World
 incPC w = w { wpc = wpc w + 1 }
 modPointer :: (Int -> Int) -> World -> World
-modPointer op w = newVal `seq` w { pointer = newVal }
+modPointer op w = w { pointer = newVal }
   where newVal = op (pointer w)
 
 apply ::  Instruction -> World -> World
@@ -111,7 +111,7 @@ apply IncP w = modPointer (+1) w
 apply DecP w = modPointer (subtract 1) w
 apply IncB w = modByteAtPointer (+1) w
 apply DecB w = modByteAtPointer (+(-1)) w
-apply OutB w = newVal `seq` w { output = newVal }
+apply OutB w = w { output = newVal }
   where newVal = byteAtPointer w : output w 
 apply InpB _w = error "Not implemented Input Byte"
 apply JmpF w = if byteAtPointer w == 0 then jumpForward w else incPC w
