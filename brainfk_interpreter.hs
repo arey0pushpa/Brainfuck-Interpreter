@@ -1,11 +1,10 @@
--- Incomplete, as it doesn't do input
 module Main where
 import Data.Array
-import Data.Char (chr)
+import Data.Char (chr, ord)
 import Data.Int (Int8)
 import System.Environment (getArgs)
 import Test.HUnit
-
+import qualified Data.ByteString.Lazy.Char8 as BS
 type Byte = Int8
 --------------------------------------------------------------------------------
 -- zipper
@@ -30,15 +29,17 @@ data World = World { wpc     :: Int
                    , pointer :: Int
                    , program :: Array Int Instruction
                    , memory  :: Zipper Byte
+                   , input   :: BS.ByteString
                    , output  :: [Byte]
                    } deriving (Show)
 
-initWorld :: [Instruction] -> World
-initWorld cmds = 
+initWorld :: BS.ByteString -> [Instruction] -> World
+initWorld inp cmds = 
   World { pointer = 0
         , memory  = mem
         , program = progAry
         , wpc     = 0
+        , input   = inp
         , output  = [] }
  where 
    progAry = toInstructionArray cmds
@@ -48,19 +49,14 @@ data Mode = ShowProg | RunProg deriving (Eq)
 
 main ::  IO ()
 main = do
-  args <- getArgs
-  let mode = case args of
-              ["--show"] -> ShowProg
-              []         -> RunProg
-              _other     -> error "usage: prog [--show]"
+  [fname] <- getArgs
   _counts <- tests
-  let f = case mode of
-            ShowProg -> parseAndShow
-            RunProg  -> parseRunAndDisplay
-  interact f
+  inp <- BS.getContents
+  fContents <- readFile fname
+  putStrLn $ parseRunAndDisplay inp fContents
 
-parseRunAndDisplay ::  String -> String
-parseRunAndDisplay = display . run . parse
+parseRunAndDisplay ::  BS.ByteString -> String -> String
+parseRunAndDisplay inp = display . run inp . parse
 
 parseAndShow ::  String -> String
 parseAndShow = unlines . map show . zip [(0::Int)..] . parse
@@ -70,7 +66,7 @@ data Instruction = IncP
                  | IncB
                  | DecB
                  | OutB
-                 -- | InpB
+                 | InpB
                  | JmpF
                  | JmpB
                  deriving (Show, Enum, Eq, Ord)
@@ -90,7 +86,7 @@ parseOne '<' = DecP
 parseOne '+' = IncB
 parseOne '-' = DecB
 parseOne '.' = OutB
--- parseOne ',' = InpB -- TODO: implement InputByte instruction
+parseOne ',' = InpB
 parseOne '[' = JmpF
 parseOne ']' = JmpB
 parseOne other = error $ "illegal character: " ++ [other]
@@ -101,10 +97,10 @@ legalInstructionChar = flip elem "><+-.,[]"
 display :: [Byte] -> String
 display = map (chr . fromIntegral) . reverse
 
-run :: [Instruction] -> [Byte]
-run cmds = let w  = initWorld cmds
-               w' = run' w
-           in output w' 
+run :: BS.ByteString -> [Instruction] -> [Byte]
+run inp cmds = let w  = initWorld inp cmds
+                   w' = run' w
+               in output w' 
 
 run' :: World -> World
 run' w = case nextInstruction w of
@@ -138,8 +134,12 @@ apply IncB w = modMem zInc w
 apply DecB w = modMem zDec w
 apply OutB w = w { output = newVal }
   where newVal = byteAtPointer w : output w 
--- TODO: implement InputByte instruction
--- apply InpB _w = error "Not implemented Input Byte"
+apply InpB w = w' { input = remInput } 
+  where 
+    w' = modMem (zPut b) w
+    (b, remInput) = if BS.null (input w)
+                       then (0, input w)
+                       else (fromIntegral $ ord $ BS.head (input w), BS.tail (input w))
 apply JmpF w = if byteAtPointer w == 0 then jumpForward w else incPC w
 apply JmpB w = if byteAtPointer w /= 0 then jumpBackward w else incPC w
 
@@ -186,9 +186,9 @@ byteAtPointer w = zGet $ memory w
 tests ::  IO Counts
 tests = runTestTT $ TestList [ jfTests, rolloverTests, runnerTests]
 runnerTests :: Test
-runnerTests = TestList [ "no inp, no output" ~: []  ~=? (run $ parse "") 
-                       , "single instr"      ~: [0] ~=? (run $ parse ".")
-                       , "single instr"      ~: "Hello World!\n" ~=? (display $ run $ parse 
+runnerTests = TestList [ "no inp, no output" ~: []  ~=? (run BS.empty $ parse "") 
+                       , "single instr"      ~: [0] ~=? (run BS.empty $ parse ".")
+                       , "single instr"      ~: "Hello World!\n" ~=? (display $ run BS.empty $ parse 
                       "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.")
                        ]
 
