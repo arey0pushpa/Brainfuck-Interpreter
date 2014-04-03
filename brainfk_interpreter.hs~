@@ -6,8 +6,7 @@ import System.Environment (getArgs)
 import Test.HUnit
 import qualified Data.ByteString.Lazy.Char8 as BS
 type Byte = Int8
-
-
+--------------------------------------------------------------------------------
 -- zipper
 --------------------------------------------------------------------------------
 
